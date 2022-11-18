@@ -1,9 +1,8 @@
 const bcrypt = require('bcryptjs')
-const mongoose = require("mongoose");
-const slugify = require("slugify");
-const jwt = require("jsonwebtoken")
-const crypto = require("crypto");
-const ErrorResponse = require("../../utils/ErrorResponse");
+const mongoose = require('mongoose')
+const slugify = require('slugify')
+const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
 
 // Schema
 const UserSchema = new mongoose.Schema({
@@ -25,15 +24,20 @@ const UserSchema = new mongoose.Schema({
         select: false,
     },
     addresses: [{
+        addressID: {
+            type: Number,
+            default: 0,
+        },
         idDefault: {
             type: Boolean,
             default: false,
         },
-        address: {
-            type: String,
-            require: true,
+        address: String,
+        detailAddress: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'address',
         },
-    }, ],
+    }],
     phone: String,
     name: String,
     fullName: String,
@@ -44,12 +48,27 @@ const UserSchema = new mongoose.Schema({
         type: String,
         default: 'TGDD',
     },
+    avatar: {
+
+      public_id: {
+        type: String,
+        required: true,
+        default: 'avatars/muqwmegdp6xzikzgsdkw',
+      },
+      url: {
+        type: String,
+        required: true,
+        default:
+          'https://res.cloudinary.com/dw8fi9npd/image/upload/v1667137085/avatars/muqwmegdp6xzikzgsdkw.jpg',
+      },
+    },
     // role
     isAdmin: {
         type: Boolean,
         required: true,
         default: false,
     },
+
     emailCodeToken: String,
     emailCodeExpires: Date,
     enable: {
@@ -70,28 +89,31 @@ UserSchema.methods.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password)
 }
 
-
 // Slugify
-UserSchema.pre("save", function(next) {
-    let fullNameRaw = this.firstName ? `${this.firstName} ${this.lastName}` : this.name
+UserSchema.pre('save', function(next) {
+    // 
+    let fullNameRaw = this.firstName ?
+        `${this.firstName} ${this.lastName}` :
+        this.name
     this.fullName = slugify(fullNameRaw, {
-        replacement: "-",
+        replacement: '-',
         trim: true,
         lower: true,
     })
-
-    next();
-});
+    next()
+})
 
 // generate access token
 UserSchema.methods.getJwtToken = function() {
-    return jwt.sign({
-        id: this._id
-    }, process.env.JWT_SECRET_KEY, {
-        expiresIn: process.env.JWT_EXPIRES_TIME
-    });
-};
-// Encrypting password before saving user
+        return jwt.sign({
+                id: this._id,
+            },
+            process.env.JWT_SECRET_KEY, {
+                expiresIn: process.env.JWT_EXPIRES_TIME,
+            }
+        )
+    }
+    // Encrypting password before saving user
 UserSchema.pre('save', async function(next) {
     if (!this.isModified('password')) {
         next()
@@ -102,21 +124,23 @@ UserSchema.pre('save', async function(next) {
 
 // Compare user password
 UserSchema.methods.comparePassword = async function(enteredPassword) {
-    return await bcrypt.compare(enteredPassword, this.password)
-};
-// Generate code to verify email
+        return await bcrypt.compare(enteredPassword, this.password)
+    }
+    // Generate code to verify email
 UserSchema.methods.verifyEmailToken = function() {
     // Generate token
-    const verifyToken = crypto.randomBytes(20).toString('hex');
+    const verifyToken = crypto.randomBytes(20).toString('hex')
 
     // Hash and set to resetPasswordToken
-    this.emailCodeToken = crypto.createHash('sha256').update(verifyToken).digest('hex')
-        //expires 
+    this.emailCodeToken = crypto
+        .createHash('sha256')
+        .update(verifyToken)
+        .digest('hex')
+        //expires
     this.emailCodeExpires = Date.now() + 60 * 1000 * 30
 
     return verifyToken
 }
-
 
 // exports
 let User = mongoose.model('users', UserSchema)

@@ -1,6 +1,8 @@
 const asyncHandler = require('express-async-handler')
-
+const catchAsyncHandler = require('../middleware/async')
+const ErrorResponse = require('../utils/ErrorResponse')
 const Order = require('../models/order/orderModal')
+const Product = require('../models/product/productModel')
 class orderControllers {
   addOrderItems = asyncHandler(async (req, res) => {
     const {
@@ -29,6 +31,19 @@ class orderControllers {
         totalPrice,
       })
       const createdOrder = await order.save()
+      order.orderItems.map(async (item) => {
+        const product = await Product.findById(item.product)
+        product.productOptions.forEach((Option, index) => {
+          if (Option._id.toString() === item.option.toString()) {
+            Option.colors.forEach((color, i) => {
+              if (color._id.toString() === item.color.toString()) {
+                product.productOptions[index].colors[i].quantity -= item.qty
+              }
+            })
+          }
+        })
+        await product.save()
+      })
       res.status(201).json(createdOrder)
     }
   })
@@ -74,6 +89,10 @@ class orderControllers {
   //@access Private
   getMyOrders = asyncHandler(async (req, res) => {
     const orders = await Order.find({ user: req.user._id })
+    res.json(orders)
+  })
+  getAllOrders = asyncHandler(async (req, res) => {
+    const orders = await Order.find({})
     res.json(orders)
   })
 }
