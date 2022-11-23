@@ -45,6 +45,7 @@ class ProductController {
         _id: product._id,
         manufacturer: manufacturer.name,
         name: product.name,
+        event: product.event,
         image: product.image,
         video: product.video,
         productOptions: product.productOptions,
@@ -71,12 +72,17 @@ class ProductController {
   // @route   GET /api/products/category/:slug
   // @access  Public
   getProductsByCategory = asyncHandler(async (req, res) => {
+    const categoryId = await Category.findOne({
+      name: req.params.slug,
+    });
+    console.log(req.params.slug);
+    console.log(categoryId);
     const product = await Product.find({})
       .populate({
         path: "subCategory",
-        match: { category: req.params.slug },
+        match: { category: categoryId._id },
       })
-      .select("name image rating price ");
+      .select("name image rating price ,subCategory");
     const result = [];
     product.map((item, index) => {
       if (item.subCategory !== null) {
