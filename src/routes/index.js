@@ -4,6 +4,7 @@ const ErrorResponse = require("../utils/ErrorResponse");
 const authRoute = require("./authRoute");
 const productRoute = require("./productRoute");
 const userRoute = require("./userRoute");
+const oauthRoute = require("./oauthRoute");
 const orderRoute = require("./orderRoute");
 const commentRoute = require("./commentRoute");
 const cartRoute = require("./cartRoute");
@@ -24,14 +25,22 @@ function route(app) {
   app.use("/api/users", userRoute);
   // Auth
   app.use("/api/auth", authRoute);
+  // OAuth
+  app.use("/api/oauth2", oauthRoute);
+
   //product
   app.use("/api/products", productRoute);
-  //cart
+
+  //product
   app.use("/api/carts", cartRoute);
-  //voucher
-  app.use("/api/vouchers", voucherRoute);
-  //event
-  app.use("/api/events", eventRoute);
+
+  // test
+  app.use("/test", (req, res) => {
+    res.json({
+      success: true,
+      message: "Welcome nlh-ecom-system",
+    });
+  });
   // main
   app.use("/", (req, res, next) => {
     next(new ErrorResponse(`Page not found`, 404, null, "Not found"));
