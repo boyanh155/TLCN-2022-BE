@@ -1,24 +1,36 @@
-const express = require('express')
-const router = express.Router()
-const productController = require('../controllers/ProductController')
-const verifyToken = require('../middleware/auth')
-const { admin } = require('../middleware/authMiddleware.js')
+const express = require("express");
+const router = express.Router();
+const productController = require("../controllers/ProductController");
+const verifyToken = require("../middleware/auth");
+const { admin } = require("../middleware/authMiddleware.js");
 
-router.route('/count').get(verifyToken, admin, productController.countProducts)
-router.route('/topreviews').get(productController.getTopProducts)
-router.route('/category/:slug').get(productController.getProductsByCategory)
-router.route('/subcategory/:id').get(productController.getProductsBySubCategory)
 router
-  .route('/')
+  .route("/trash")
+  .get(verifyToken, admin, productController.getTrashProducts);
+router.route("/count").get(verifyToken, admin, productController.countProducts);
+router.route("/topreviews").get(productController.getTopProducts);
+router.route("/category/:slug").get(productController.getProductsByCategory);
+router
+  .route("/subcategory/:id")
+  .get(productController.getProductsBySubCategory);
+router
+  .route("/")
   .get(productController.index)
-  .post(verifyToken, admin, productController.createProduct)
+  .post(verifyToken, admin, productController.createProduct);
 router
-  .route('/:id')
+  .route("/:id")
   .get(productController.getProductById)
   .delete(verifyToken, admin, productController.deleteProduct)
-  .put(verifyToken, admin, productController.updateProduct)
+  .put(verifyToken, admin, productController.updateProduct);
 router
-  .route('/:id/reviews')
-  .post(verifyToken, productController.createProductReview)
+  .route("/:id/restore")
+  .patch(verifyToken, admin, productController.restoreProduct);
 
-module.exports = router
+router
+  .route("/:id/force")
+  .delete(verifyToken, admin, productController.forceProduct);
+router
+  .route("/:id/reviews")
+  .post(verifyToken, productController.createProductReview);
+
+module.exports = router;

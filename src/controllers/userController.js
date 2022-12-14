@@ -2,7 +2,7 @@ const ErrorResponse = require("../utils/ErrorResponse");
 const User = require("../models/user/User");
 const Address = require("../models/user/Address");
 const catchAsyncHandler = require("../middleware/async");
-
+const asyncHandler = require("express-async-handler");
 class userControllers {
   //@desc GET user profile
   //@route POST / api/users/profile
@@ -156,20 +156,57 @@ class userControllers {
       address,
     });
   });
+  //@desc UPDATE user profile
+  //@route PUT / api/users/:id
+  //@access Private
+  updateUser = catchAsyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+    if (user) {
+      user.name = req.body.name || user.name;
+      user.email = req.body.email || user.email;
+      user.isAdmin = req.body.isAdmin || user.isAdmin;
+      const updateUser = await user.save();
+      res.json({
+        _id: updateUser._id,
+        name: updateUser.name,
+        email: updateUser.email,
+        isAdmin: updateUser.isAdmin,
+      });
+    } else {
+      res.status(401);
+      throw new Error("User not found");
+    }
+  });
   //@desc GET all user profile
   //@route GET / api/users
   //@access Private
   getUsers = catchAsyncHandler(async (req, res) => {
-    const users = await User.find({});
-    res.json(users);
+    const pageSize = 10;
+    const page = Number(req.query.page) || 1;
+    const count = await User.count({});
+    const users = await User.find({})
+      .limit(pageSize)
+      .skip(pageSize * (page - 1));
+    if (users) {
+      res.json({
+        users,
+        page,
+        pages: Math.ceil(count / pageSize),
+      });
+    } else {
+      res.status(404);
+      throw new Error("Product not found");
+    }
   });
+
   //@desc Delete  user profile
-  //@route DELETE api/address/:addressID
+  //@route GET / api/users
   //@access Private
   deleteUser = catchAsyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id);
+    const user = await User.delete({
+      _id: req.params.id,
+    });
     if (user) {
-      await user.remove();
       res.json({
         message: "User removed",
       });
@@ -177,7 +214,57 @@ class userControllers {
       res.status(404);
       throw new Error("User not found");
     }
-    res.json(user);
+  });
+  // @desc    restore a User
+  // @route   DELETE /api/users/:id/restore
+  // @access  Private/Admin
+  restoreUser = catchAsyncHandler(async (req, res) => {
+    const user = await User.restore({
+      _id: req.params.id,
+    });
+    if (user) {
+      res.json({
+        message: "restored",
+      });
+    } else {
+      res.status(404);
+      throw new Error("Product not found");
+    }
+  });
+  // @desc    force a user
+  // @route   FORCE /api/user/:id/force
+  // @access  Private/Admin
+  forceUser = catchAsyncHandler(async (req, res) => {
+    const user = await User.deleteOne({
+      _id: req.params.id,
+    });
+    if (user) {
+      res.json({
+        message: "Product removed",
+      });
+    } else {
+      res.status(404);
+      throw new Error("Product not found");
+    }
+  });
+  getTrashUsers = catchAsyncHandler(async (req, res, next) => {
+    // const products = await Product.countDeleted
+    const pageSize = 10;
+    const page = Number(req.query.page) || 1;
+    const count = await User.countDeleted();
+    const users = await User.findDeleted()
+      .limit(pageSize)
+      .skip(pageSize * (page - 1));
+    if (users) {
+      res.json({
+        users,
+        page,
+        pages: Math.ceil(count / pageSize),
+      });
+    } else {
+      res.status(404);
+      throw new Error("Product not found");
+    }
   });
   //@desc GET  user
   //@route GET / api/users/:id
@@ -213,5 +300,4 @@ class userControllers {
     }
   });
 }
-
 module.exports = new userControllers();

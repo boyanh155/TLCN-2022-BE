@@ -15,7 +15,7 @@ const orderSchema = mongoose.Schema(
       statusNow: {
         type: String,
         required: true,
-        default: "Pending",
+        default: "pending",
       },
       description: {
         type: String,
@@ -28,6 +28,34 @@ const orderSchema = mongoose.Schema(
         name: {
           type: String,
           required: true,
+        },
+        info: {
+          colorName: {
+            type: String,
+            required: true,
+          },
+          optionName: {
+            type: String,
+            required: true,
+          },
+          listingPrice: {
+            type: Number,
+          },
+          manufacturerName: {
+            type: String,
+            require: true,
+            default: "",
+          },
+          subCategoryName: {
+            type: String,
+            require: true,
+            default: "",
+          },
+          promotionDescription: {
+            type: String,
+            require: true,
+            default: "",
+          },
         },
         quantity: {
           type: Number,
@@ -65,10 +93,7 @@ const orderSchema = mongoose.Schema(
         type: String,
         required: true,
       },
-      postalCode: {
-        type: String,
-        required: true,
-      },
+
       country: {
         type: String,
         required: true,

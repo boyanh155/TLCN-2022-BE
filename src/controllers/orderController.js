@@ -6,7 +6,7 @@ const Item = require("../models/cart/Item");
 const Product = require("../models/product/productModel");
 const Voucher = require("../models/voucher/voucher");
 class orderControllers {
-  addOrderItems = asyncHandler(async (req, res, next) => {
+  addOrderItems = catchAsyncHandler(async (req, res, next) => {
     const {
       shippingAddress,
       paymentMethod,
@@ -16,39 +16,41 @@ class orderControllers {
       totalPrice,
       voucher,
     } = req.body;
-    const items = await Item.find({ user: req.user._id });
-
+    const items = await Item.find({
+      user: req.user._id,
+    });
+    let order = new Order({
+      orderItems: [],
+      user: req.user._id,
+      shippingAddress,
+      paymentMethod,
+      itemsPrice,
+      taxPrice,
+      shippingPrice,
+      totalPrice,
+    });
     if (items && items.length === 0) {
-      res.status(400);
-      throw new Error(` no Order item `);
-      return;
+      return next(new ErrorResponse("Order not found", 404));
     } else {
       const orderItems = [];
       items.map((item) => {
         orderItems.push(item.item);
       });
+      order.orderItems = orderItems;
       if (voucher) {
         const findVoucher = await Voucher.findById(voucher);
 
         if (findVoucher) {
+          order.voucher = findVoucher._id;
           findVoucher.limit -= 1;
           await findVoucher.save();
         } else {
           return next(new ErrorResponse("Voucher not found", 400));
         }
       }
-      const order = new Order({
-        orderItems,
-        user: req.user._id,
-        shippingAddress,
-        paymentMethod,
-        itemsPrice,
-        taxPrice,
-        shippingPrice,
-        totalPrice,
-        voucher,
-      });
+
       const createdOrder = await order.save();
+
       if (createdOrder) {
         order.orderItems.map(async (item) => {
           const product = await Product.findById(item.product);
@@ -64,19 +66,75 @@ class orderControllers {
           });
           await product.save();
         });
-        await Item.deleteMany({ user: req.user._id });
-        res.status(201).json(createdOrder);
+      }
+      res.status(200).json({
+        success: true,
+        message: "Order successfully created",
+        order: createdOrder,
+      });
+    }
+  });
+  //@desc GET logged in user orders
+  //@route GET/api/orders/myorders
+  //@access Private
+  getMyOrders = catchAsyncHandler(async (req, res) => {
+    const orders = await Order.find({
+      user: req.user._id,
+    });
+    res.json(orders);
+  });
+  //@desc Get order by ID
+  //@route GET/api/orders/:id
+  //@access Private
+
+  getOrderById = catchAsyncHandler(async (req, res) => {
+    const order = await Order.findById(req.params.id).populate(
+      "user",
+      "name email"
+    );
+    if (!order) return next(new ErrorResponse("Order not found", 404));
+    res.status(200).json({
+      success: true,
+      message: "Get order by ID",
+      order,
+    });
+  });
+  //@desc Get order by ID
+  //@route GET/api/orders/:id
+  //@access Private
+
+  updateOrderById = catchAsyncHandler(async (req, res, next) => {
+    const { shippingAddress, voucher } = req.body;
+    const order = await Order.findById(req.params.id).populate("user");
+    if (!order) return next(new ErrorResponse("Order not found", 404));
+    order.shippingAddress = shippingAddress;
+    if (voucher) {
+      const findVoucher = await Voucher.findById(voucher);
+      if (findVoucher) {
+        findVoucher.limit -= 1;
+        await findVoucher.save({
+          validateBeforeSave: false,
+        });
+        order.voucher = voucher;
       } else {
-        if (voucher) {
-          const findVoucher = await Voucher.findById(voucher);
-          await findVoucher.save();
-          if (findVoucher) {
-            findVoucher.limit += 1;
-          }
-        }
-        return next(new ErrorResponse("Add order fail", 400));
+        return next(new ErrorResponse("Voucher Invalid", 400));
       }
     }
+    await order.save({
+      validateBeforeSave: false,
+    });
+    res.status(200).json({
+      success: true,
+      message: "Update order successfully",
+      order,
+    });
+  });
+  //@desc GET logged in user orders
+  //@route GET/api/orders/
+  //@access Private Admin
+  getAllOrders = catchAsyncHandler(async (req, res) => {
+    const orders = await Order.find({});
+    res.json(orders);
   });
   //@desc Get order by ID
   //@route GET/api/orders/:id
@@ -120,7 +178,9 @@ class orderControllers {
   //@route GET/api/orders/myorders
   //@access Private
   getMyOrders = asyncHandler(async (req, res) => {
-    const orders = await Order.find({ user: req.user._id });
+    const orders = await Order.find({
+      user: req.user._id,
+    }).sort([["createdAt", "-1"]]);
     res.json(orders);
   });
   //@desc GET logged in user orders
@@ -137,7 +197,11 @@ class orderControllers {
       .limit(pageSize)
       .skip(pageSize * (page - 1));
     if (orders) {
-      res.json({ orders, page, pages: Math.ceil(count / pageSize) });
+      res.json({
+        orders,
+        page,
+        pages: Math.ceil(count / pageSize),
+      });
     } else {
       res.status(404);
       throw new Error("Product not found");
@@ -165,11 +229,11 @@ class orderControllers {
   //@access Private
   //In body
   /*
-  status:{
-    statusNow:"cancel",
-    description:"Ly do huy"
-  }
-  */
+    status:{
+      statusNow:"cancel",
+      description:"Ly do huy"
+    }
+    */
   //in Body
   updateStatusOrder = asyncHandler(async (req, res, next) => {
     const order = await Order.findById(req.params.id);
@@ -199,13 +263,23 @@ class orderControllers {
   //@access Private
   getTopUserOrder = catchAsyncHandler(async (req, res) => {
     const topOrder = await Order.aggregate([
-      { $group: { _id: { user: "$user" }, count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: {
+            user: "$user",
+          },
+          count: {
+            $sum: 1,
+          },
+        },
+      },
     ])
-      .sort({ count: -1 })
+      .sort({
+        count: -1,
+      })
       .limit(5);
 
     res.json(topOrder);
   });
 }
-
 module.exports = new orderControllers();
