@@ -23,7 +23,7 @@ class ProductController {
       : {};
     const count = await Product.count({ ...keyword });
     const products = await Product.find({ ...keyword })
-      .select("name price rating image")
+      .select("name price rating image productOptions")
       .limit(pageSize)
       .skip(pageSize * (page - 1));
     if (products) {
@@ -75,14 +75,12 @@ class ProductController {
     const categoryId = await Category.findOne({
       name: req.params.slug,
     });
-    console.log(req.params.slug);
-    console.log(categoryId);
     const product = await Product.find({})
       .populate({
         path: "subCategory",
         match: { category: categoryId._id },
       })
-      .select("name image rating price ,subCategory");
+      .select("name image rating price subCategory productOptions");
     const result = [];
     product.map((item, index) => {
       if (item.subCategory !== null) {
@@ -251,6 +249,13 @@ class ProductController {
         .select("name rating");
       res.json(products);
     }
+  });
+  // @desc    Get count product
+  // @route   GET /api/products/count
+  // @access  private
+  countProducts = asyncHandler(async (req, res) => {
+    const count = await Product.count({});
+    res.json(count);
   });
 }
 module.exports = new ProductController();
