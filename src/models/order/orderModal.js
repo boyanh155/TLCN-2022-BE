@@ -3,14 +3,59 @@ const orderSchema = mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
-        ref: 'User',
+        ref: 'users',
+    },
+    isConfirm: {
+        type: Boolean,
+        required: true,
+        default: false,
+    },
+    status: {
+      statusNow: {
+        type: String,
+        required: true,
+        default: 'pending',
+      },
+      description: {
+        type: String,
+        required: true,
+        default: 'Đang đợi admin xử lý.',
+      },
     },
     orderItems: [{
         name: {
             type: String,
             required: true,
         },
-        qty: {
+        info: {
+          colorName: {
+            type: String,
+            required: true,
+          },
+          optionName: {
+            type: String,
+            required: true,
+          },
+          listingPrice: {
+            type: Number,
+          },
+          manufacturerName: {
+            type: String,
+            require: true,
+            default: '',
+          },
+          subCategoryName: {
+            type: String,
+            require: true,
+            default: '',
+          },
+          promotionDescription: {
+            type: String,
+            require: true,
+            default: '',
+          },
+        },
+        quantity: {
             type: Number,
             required: true,
         },
@@ -30,7 +75,6 @@ const orderSchema = mongoose.Schema({
         color: {
             type: mongoose.Schema.Types.ObjectId,
             required: true,
-            ref: 'Color',
         },
         option: {
             type: mongoose.Schema.Types.ObjectId,
@@ -46,16 +90,14 @@ const orderSchema = mongoose.Schema({
             type: String,
             required: true,
         },
-        postalCode: {
-            type: String,
-            required: true,
-        },
+
         country: {
             type: String,
             required: true,
         },
     },
     paymentMethod: {
+
         type: String,
         required: true,
     },
@@ -103,6 +145,10 @@ const orderSchema = mongoose.Schema({
     },
     deliveredAt: {
         type: Date,
+    },
+    voucher: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Voucher',
     },
 }, {
     timestamps: true,
